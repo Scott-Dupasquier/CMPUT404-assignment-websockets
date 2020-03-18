@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 import flask
-from flask import Flask, request
+from flask import Flask, request, redirect
 from flask_sockets import Sockets
 import gevent
 from gevent import queue
@@ -25,6 +25,12 @@ import os
 app = Flask(__name__)
 sockets = Sockets(app)
 app.debug = True
+
+clients = []
+
+def send_all(msg):
+    for client in clients:
+        client.put(msg)
 
 class World:
     def __init__(self):
@@ -59,29 +65,59 @@ class World:
     def world(self):
         return self.space
 
+class Client:
+    def __init__(self):
+        self.queue = queue.Queue()
+
+    def put(self, v):
+        self.queue.put_nowait(v)
+
+    def get(self):
+        return self.queue.get()
+
 myWorld = World()        
 
 def set_listener( entity, data ):
     ''' do something with the update ! '''
+    print("Not implemented!")
 
 myWorld.add_set_listener( set_listener )
         
 @app.route('/')
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return None
+    return redirect("/static/index.html", code=301)
 
 def read_ws(ws,client):
     '''A greenlet function that reads from the websocket and updates the world'''
     # XXX: TODO IMPLEMENT ME
-    return None
+    reading = True
+    while reading:
+        msg = ws.receive()
+        print("WS RECV: %s" % msg)
+        if (msg is not None):
+            packet = json.loads(msg)
+            send_all(json.dumps(packet))
+        else:
+            reading = False
 
 @sockets.route('/subscribe')
 def subscribe_socket(ws):
     '''Fufill the websocket URL of /subscribe, every update notify the
        websocket and read updates from the websocket '''
     # XXX: TODO IMPLEMENT ME
-    return None
+    client = Client() # WILL NOT WORK
+    clients.append(client)
+    g = gevent.spawn(read_ws, ws, client)
+    try:
+        while True:
+            msg = client.get()
+            ws.send(msg)
+    except Exception as e:
+        print("WS Error: %s" % e)
+    finally:
+        clients.remove(client)
+        gevent.kill(g)
 
 
 # I give this to you, this is how you get the raw body/data portion of a post in flask
@@ -99,23 +135,28 @@ def flask_post_json():
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     '''update the entities via this interface'''
-    return None
+    data = flask_post_json()
+    myWorld.set(entity, data)
+    response = myWorld.get(entity)
+    return flask.jsonify(response)
 
 @app.route("/world", methods=['POST','GET'])    
 def world():
     '''you should probably return the world here'''
-    return None
+    return flask.jsonify(myWorld.world()) # Return world in json format
 
 @app.route("/entity/<entity>")    
 def get_entity(entity):
     '''This is the GET version of the entity interface, return a representation of the entity'''
-    return None
-
+    data = myWorld.get(entity) # Get entity information
+    return flask.jsonify(data) # Return information for that entity in json format
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
     '''Clear the world out!'''
-    return None
+    myWorld.clear() # Clear all data in the world
+    # Return success, 200 OK code, and necessary headers
+    return json.dumps({'success':True}, 200, {'Content-Type: application/json'}, {})
 
 
 
@@ -125,4 +166,5 @@ if __name__ == "__main__":
         and run
         gunicorn -k flask_sockets.worker sockets:app
     '''
-    app.run()
+    # app.run()
+    os.system("gunicorn -k flask_sockets.worker sockets:app")
