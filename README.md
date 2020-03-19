@@ -17,6 +17,16 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+References
+==========
+Hazel Campbell (https://github.com/hazelybell) 2019. ObserverExampleAjax, uofa-cmput404. URL: https://github.com/uofa-cmput404/cmput404-slides/tree/master/examples/ObserverExampleAJAX
+
+Scott Dupasquier (https://github.com/Scott-Dupasquier) 2020. CMPUT404-assignment-ajax. URL: https://github.com/Scott-Dupasquier/CMPUT404-assignment-ajax
+
+"WebSocket.onmessage". MDN Web Docs, Mozilla Developer Network. URL: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/onmessage
+
+"Websocket.send()". MDN Web Docs, Mozilla Developer Network. URL: https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/send
+
 Contributors / Licensing
 ========================
 
